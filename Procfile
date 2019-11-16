@@ -1,1 +1,1 @@
-web: gunicorn wordlist:wordlist
+web: gunicorn app:app
