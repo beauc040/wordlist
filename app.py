@@ -1,4 +1,5 @@
 from flask import Flask, request, Response, render_template, jsonify
+import json
 import requests
 import itertools
 from flask_wtf.csrf import CSRFProtect
@@ -42,25 +43,50 @@ app.config["SECRET_KEY"] = "aelrkbjp9a8ehhjaa)(*J$(*GH"
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 csrf.init_app(app)
 
+def clean_def(d):
+    if not d:
+        return d
+    d = re.sub('{[a-z]*}', '', d)
+    d = re.sub('{/[a-z]*}', '', d)
+    d = re.split('{[a-z]*\|', d)
+    d = ''.join(d)
+    d = re.sub('(\||[0-9])*}', '', d)
+    if '{' in d or '}' in d:
+        print(d)
+        return None
+    return d
+
 def get_definitions(word):
     """ Returns the definitions of word (formatted in html) """
     url = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/%s?key=%s" % \
         (word, app.config["DICT_KEY"])
     r = requests.get(url = url)
     data = r.json()
-    defs = data[0]
-    print(data)
-    print(defs)
-    if type(defs) == type('asdfasdf'):
-        return "No definitions found"
-    defs = defs['def']
     def_list = []
-    for d in defs or []:
-        for s in d.get('sseq') or []:
-            dt = s[0][1].get('dt')
-            if dt:
-                def_list.append(dt[0][1])
-    print(def_list)
+    for defs in data:
+        if type(defs) == str:
+            continue
+        defs = defs.get('def')
+        if not defs:
+            continue
+        for d in defs or []:
+            for s in d.get('sseq') or []:
+                if s[0][0] == 'pseq':
+                    s = s[0][1][0][1]
+                    dt = s.get('dt')
+                    if dt:
+                        cdt = clean_def(dt[0][1])
+                        if cdt:
+                            def_list.append(cdt)
+                    continue
+                dt = s[0][1].get('dt')
+                if dt:
+                    cdt = clean_def(dt[0][1])
+                    if cdt:
+                        def_list.append(cdt)
+
+    if not def_list:
+        return ["No definitions found"]
     return def_list
 
 @app.route('/')
@@ -109,8 +135,7 @@ def letters_2_words():
 
     return render_template('wordlist.html',
         wordlist=sorted(word_set, key=lambda x:(len(x),x)),
-        name="CS4131",
-        getDef=get_definitions)
+        name="CS4131")
 
 
 
