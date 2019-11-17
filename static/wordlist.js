@@ -6,7 +6,7 @@ async function wordPopup(id) {
             popups[i].style.visibility = "hidden";
     }
 
-    if (popup.innerHTML = "") {
+    if (popup.innerHTML == "") {
         let opts = {
             method: "GET",
         };
