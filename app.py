@@ -51,7 +51,7 @@ def clean_def(d):
     d = re.split('{[a-z]*\|', d)
     d = ''.join(d)
     d = re.sub('(\||[0-9])*}', '', d)
-    if '{' in d or '}' in d:
+    if '|' in d or '{' in d or '}' in d:
         print(d)
         return None
     return d
