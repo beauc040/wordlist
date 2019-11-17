@@ -3,7 +3,10 @@
 {% block content %}
 <main>
     {% for word in wordlist: %}
-        <div class="wordbox">{{ word }}</div>
+        <div class="wordbox" id="{{word}}" onclick="wordPopup(this.id)">
+            {{ word }}
+            <div class="popup" id="{{word}}-popup">{{ getDef(word) }}</div>
+        </div>
     {% endfor %}
 </main>
 {% endblock %}

@@ -6,6 +6,10 @@
         {{ form.hidden_tag() }}
         {{ render_field(form.avail_letters) }}
         <br />
+        {{ render_field(form.wlength) }}
+        <br />
+        {{ render_field(form.pattern) }}
+        <br />
         {{form.submit()}}
     </form>
 {% endblock %}

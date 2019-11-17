@@ -1,23 +1,67 @@
-from flask import Flask, request, Response, render_template
+from flask import Flask, request, Response, render_template, jsonify
 import requests
 import itertools
 from flask_wtf.csrf import CSRFProtect
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, IntegerField
 from wtforms.validators import Regexp
 import re
 
 class WordForm(FlaskForm):
     avail_letters = StringField("Letters", validators= [
-        Regexp(r'^[a-z]+$', message="must contain letters only")
+        Regexp(r'^[a-z]*$', message="must contain letters only")
+    ])
+    wlength = StringField("Word Length", validators= [
+        Regexp(r'^([3-9]|10)$|^$', message="must be a number from 3 to 10, or nothing at all")
+    ])
+    pattern = StringField("Pattern", validators= [
+        Regexp(r'^([a-z]|\.)*$', message="must contain letters or . only")
     ])
     submit = SubmitField("Go")
 
+    def validate(self):
+        if not super().validate():
+            return False
+        if not self.avail_letters.data and not self.pattern.data:
+            err_msg = 'Either Letters, Pattern, or both must be specified'
+            self.avail_letters.errors.append(err_msg)
+            self.pattern.errors.append(err_msg)
+            return False
+        if self.pattern.data and self.wlength.data \
+                and len(self.pattern.data) != int(self.wlength.data):
+            err_msg = 'Word Length must be the same as Pattern length'
+            self.pattern.errors.append(err_msg)
+            self.wlength.errors.append(err_msg)
+            return False
+        return True
 
 csrf = CSRFProtect()
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "row the boat"
+app.config["DICT_KEY"] = "86a0b2c1-6207-4d4e-9fa1-25115d00b3e1"
+app.config["SECRET_KEY"] = "aelrkbjp9a8ehhjaa)(*J$(*GH"
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 csrf.init_app(app)
+
+def get_definitions(word):
+    """ Returns the definitions of word (formatted in html) """
+    url = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/%s?key=%s" % \
+        (word, app.config["DICT_KEY"])
+    r = requests.get(url = url)
+    data = r.json()
+    defs = data[0]
+    print(data)
+    print(defs)
+    if type(defs) == type('asdfasdf'):
+        return "No definitions found"
+    defs = defs['def']
+    def_list = []
+    for d in defs or []:
+        for s in d.get('sseq') or []:
+            dt = s[0][1].get('dt')
+            if dt:
+                def_list.append(dt[0][1])
+    print(def_list)
+    return def_list
 
 @app.route('/')
 def def_page():
@@ -26,40 +70,54 @@ def def_page():
 @app.route('/index')
 def index():
     form = WordForm()
-    return render_template("index.html", form=form)
+    return render_template("index.html", form=form, name='Ethan Beauclaire')
 
 
 @app.route('/words', methods=['POST','GET'])
 def letters_2_words():
-
     form = WordForm()
     if form.validate_on_submit():
         letters = form.avail_letters.data
+        wlength = form.wlength.data
+        pattern = form.pattern.data
     else:
         return render_template("index.html", form=form)
 
     with open('sowpods.txt') as f:
-        good_words = set(x.strip().lower() for x in f.readlines())
+        if not pattern:
+            good_words = set(x.strip().lower() for x in f.readlines())
+        else:
+            p = re.compile('^' + pattern + '$')
+            good_words = set(x.strip().lower() for x in f.readlines() if p.match(x.strip().lower()))
 
     word_set = set()
-    for l in range(3,len(letters)+1):
-        for word in itertools.permutations(letters,l):
-            w = "".join(word)
-            if w in good_words:
-                word_set.add(w)
+    if letters:
+        if wlength=="":
+            for l in range(3,len(letters)+1):
+                for word in itertools.permutations(letters,l):
+                    w = "".join(word)
+                    if w in good_words:
+                        word_set.add(w)
+        else:
+            for word in itertools.permutations(letters,int(wlength)):
+                w = "".join(word)
+                if w in good_words:
+                    word_set.add(w)
+    else:
+        for w in good_words:
+            word_set.add(w)  # Already matched the pattern, length is satisfied from validation
 
     return render_template('wordlist.html',
-        wordlist=sorted(word_set),
-        name="CS4131")
+        wordlist=sorted(word_set, key=lambda x:(len(x),x)),
+        name="CS4131",
+        getDef=get_definitions)
 
 
 
 
 @app.route('/proxy')
 def proxy():
-    result = requests.get(request.args['url'])
-    resp = Response(result.text)
-    resp.headers['Content-Type'] = 'application/json'
-    return resp
-
-
+    print("in proxy")
+    word = request.args['word']
+    defs = get_definitions(word)
+    return jsonify(defs)

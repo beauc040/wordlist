@@ -1,16 +1,23 @@
 <html>
     <head>
         <link rel="stylesheet" href="/static/wordstyle.css">
+        <script src="/static/wordlist.js"></script>
     </head>
     <body>
         {% block navbar %}
         <nav>
-            <h1>Word List Program for {{name}}</h1>
+            <h1><a href="/">Word Finder - Ethan Beauclaire</a></h1>
         </nav>
         {% endblock %}
 
         {% block content %}
         default content
+        {% endblock %}
+
+        {% block footer %}
+        <footer>
+            <font size="2"><a href="https://github.com/beauc040/wordlist">Github repo</a></footer>
+        </footer>
         {% endblock %}
     </body>
 </html>
